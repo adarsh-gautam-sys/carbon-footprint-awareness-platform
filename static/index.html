@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Carbon Footprint Awareness Platform</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">PromptWars 2026 Challenge 3</p>
+        <h1>Carbon Footprint Awareness Platform</h1>
+        <p class="intro">Estimate your monthly impact, understand the main drivers, and choose simple actions that fit your lifestyle.</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <form id="footprint-form" class="panel" aria-label="Carbon footprint calculator">
+        <section>
+          <h2>Your Profile</h2>
+          <div class="grid two">
+            <label>Name <input name="name" required value="Adarsh" /></label>
+            <label>Country <input name="country" required value="India" /></label>
+            <label>Goal
+              <select name="goal">
+                <option value="reduce_emissions">Reduce emissions</option>
+                <option value="save_money">Save money</option>
+                <option value="build_habits">Build habits</option>
+                <option value="learn">Learn</option>
+              </select>
+            </label>
+            <label>Household size <input name="household_size" type="number" min="1" max="12" value="3" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Home Energy</h2>
+          <div class="grid three">
+            <label>Electricity kWh/month <input name="electricity_kwh" type="number" min="0" value="220" /></label>
+            <label>Gas therms/month <input name="natural_gas_therms" type="number" min="0" value="0" /></label>
+            <label>Renewable electricity % <input name="renewable_percent" type="number" min="0" max="100" value="10" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Transport</h2>
+          <div class="grid two">
+            <label>Main travel mode
+              <select name="transport_mode">
+                <option value="car_petrol">Petrol car</option>
+                <option value="car_diesel">Diesel car</option>
+                <option value="car_ev">Electric car</option>
+                <option value="bus">Bus</option>
+                <option value="train">Train</option>
+                <option value="flight_short">Short flight</option>
+                <option value="walk_cycle">Walk or cycle</option>
+              </select>
+            </label>
+            <label>Distance km/week <input name="km_per_week" type="number" min="0" value="90" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Food and Lifestyle</h2>
+          <div class="grid four">
+            <label>Diet
+              <select name="diet">
+                <option value="mixed">Mixed</option>
+                <option value="meat_heavy">Meat heavy</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+              </select>
+            </label>
+            <label>Meals out/week <input name="meals_out_per_week" type="number" min="0" value="3" /></label>
+            <label>New items/month <input name="new_items_per_month" type="number" min="0" value="2" /></label>
+            <label>Waste bags/week <input name="waste_bags_per_week" type="number" min="0" value="2" /></label>
+          </div>
+        </section>
+
+        <button type="submit">Calculate footprint</button>
+        <p id="form-status" role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="results" aria-label="Personalized carbon footprint result">
+        <div class="summary">
+          <p class="eyebrow">Estimated impact</p>
+          <strong id="monthly-total">--</strong>
+          <span>kg CO2e/month</span>
+          <p id="yearly-total">Submit the form to see your yearly estimate.</p>
+        </div>
+
+        <div>
+          <h2>Breakdown</h2>
+          <div id="breakdown" class="cards"></div>
+        </div>
+
+        <div>
+          <h2>Personalized Actions</h2>
+          <div id="actions" class="cards"></div>
+        </div>
+
+        <div>
+          <h2>Insights</h2>
+          <ul id="insights"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
