@@ -1,12 +1,12 @@
 # Google Cloud Run Deployment
 
-This project is configured for a Google Cloud Run deployment once the application code is added.
+This project is configured for Google Cloud Run deployment.
 
 ## Prerequisites
 
 - Google Cloud CLI installed and authenticated with `gcloud auth login`.
 - A Google Cloud project with billing enabled.
-- An app that listens on the `PORT` environment variable, defaulting to `8080`.
+- The FastAPI app listens on the `PORT` environment variable, defaulting to `8080`.
 - No secrets committed to the repository.
 
 ## One-Time Setup
@@ -26,6 +26,14 @@ echo "YOUR_GEMINI_API_KEY" | gcloud secrets create gemini-api-key --data-file=-
 
 Grant the Cloud Run runtime service account access to the secret if the app will read it at runtime.
 
+Optional Firestore persistence:
+
+```powershell
+gcloud services enable firestore.googleapis.com
+```
+
+Set `FIRESTORE_ENABLED=true` in Cloud Run after Firestore is configured.
+
 ## Deploy From Source
 
 ```powershell
@@ -37,6 +45,8 @@ $env:CLOUD_RUN_SERVICE="promptwars-agent"
 ```
 
 Omit `-AllowUnauthenticated` for a private service.
+
+For Gemini in production, configure the Cloud Run service with a Secret Manager-backed `GEMINI_API_KEY`.
 
 ## MCP Setup
 

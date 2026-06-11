@@ -9,6 +9,7 @@ __pycache__/
 htmlcov/
 
 .venv/
+.venv*/
 venv/
 node_modules/
 
