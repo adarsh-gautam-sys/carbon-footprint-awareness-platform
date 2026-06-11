@@ -1,0 +1,14 @@
+.git
+.gitignore
+.codex
+.agents
+node_modules
+__pycache__
+.pytest_cache
+.venv
+venv
+*.pyc
+*.log
+.env
+.env.*
+!.env.example
