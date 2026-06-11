@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,8 @@ def save_assessment(payload: dict[str, Any]) -> str:
         except Exception as exc:
             return f"firestore_unavailable:{exc.__class__.__name__}"
 
-    data_dir = Path(os.getenv("LOCAL_DATA_DIR", "/tmp/carbon-footprint-platform"))
+    default_data_dir = Path(tempfile.gettempdir()) / "carbon-footprint-platform"
+    data_dir = Path(os.getenv("LOCAL_DATA_DIR", str(default_data_dir)))
     data_dir.mkdir(parents=True, exist_ok=True)
     path = data_dir / "assessments.jsonl"
     record = {"id": str(uuid4()), "created_at": datetime.now(UTC).isoformat(), **payload}

@@ -27,4 +27,4 @@ The stack directly matches the PromptWars requirements: it uses Google AI for pe
 - `GOOGLE_CLOUD_PROJECT`: Google Cloud project id.
 - `GOOGLE_CLOUD_REGION`: Deployment region.
 - `FIRESTORE_ENABLED`: Set to `true` to store assessments in Firestore.
-- `LOCAL_DATA_DIR`: Local JSONL storage path for development.
+- `LOCAL_DATA_DIR`: Optional local JSONL storage path for development. Defaults to the platform temp directory.
