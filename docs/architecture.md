@@ -75,11 +75,11 @@ The cap at 0.92 acknowledges inherent uncertainty in lifestyle-based CO₂e esti
 
 ## Sequential Thinking MCP Usage
 
-The repository includes `mcp.json` registering the Sequential Thinking MCP server. It was used during development for:
+The Sequential Thinking MCP server was used during development for:
 
 - Breaking down the problem statement into implementation phases.
 - Reviewing prompt iterations before settling on the final system instruction.
 - Architecture review checkpoints at each layer.
 - Pre-submission deployment verification planning.
 
-This MCP server runs locally via `npx` and requires Node.js. It does not affect runtime behaviour of the deployed service.
+This MCP server was run locally via `npx` during development, and did not affect runtime behaviour of the deployed service.

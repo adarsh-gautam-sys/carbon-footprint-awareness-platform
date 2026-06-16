@@ -42,7 +42,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
 # Install dependencies
-pip install fastapi uvicorn[standard] pydantic google-genai google-cloud-firestore pytest httpx
+pip install -r requirements.txt
 
 # Optional: configure Gemini
 copy .env.example .env

@@ -5,8 +5,14 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    fastapi==0.137.1 \
+    "uvicorn[standard]==0.34.0" \
+    pydantic==2.10.4 \
+    google-genai==1.0.0 \
+    google-cloud-firestore==2.20.0 \
+    pytest==9.1.0 \
+    httpx==0.28.1
 
 COPY app ./app
 COPY static ./static

@@ -11,7 +11,7 @@
 
 ## MCP and Development Tools
 
-- Sequential Thinking MCP: Configured in `mcp.json` for structured planning and review.
+- Sequential Thinking MCP: Used during development for structured planning and review.
 - FastAPI: Provides typed API endpoints and OpenAPI docs.
 - Pydantic: Validates user input and prevents invalid carbon calculations.
 - Pytest: Covers calculation, action generation, and Gemini fallback behavior.

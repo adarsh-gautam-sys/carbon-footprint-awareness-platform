@@ -48,23 +48,7 @@ Omit `-AllowUnauthenticated` for a private service.
 
 For Gemini in production, configure the Cloud Run service with a Secret Manager-backed `GEMINI_API_KEY`.
 
-## MCP Setup
 
-`mcp.json` registers the Sequential Thinking MCP server:
-
-```json
-{
-  "servers": {
-    "sequentialthinking": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    }
-  }
-}
-```
-
-This requires Node.js and `npx` on the machine running the MCP client. The first run downloads the server package.
 
 ## Cloud Run Contract
 
