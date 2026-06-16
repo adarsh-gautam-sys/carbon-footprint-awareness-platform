@@ -16,3 +16,4 @@ node_modules/
 
 *.log
 assessments.jsonl
+requirements.txt
