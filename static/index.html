@@ -3,109 +3,283 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Carbon Footprint Awareness Platform</title>
+    <title>Carbon Footprint Awareness Platform – PromptWars 2026</title>
+    <meta name="description" content="Understand, track, and reduce your personal carbon footprint with AI-powered insights and personalized action recommendations." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">PromptWars 2026 Challenge 3</p>
-        <h1>Carbon Footprint Awareness Platform</h1>
-        <p class="intro">Estimate your monthly impact, understand the main drivers, and choose simple actions that fit your lifestyle.</p>
+    <!-- Skip link for keyboard/screen reader users -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="app-header" role="banner">
+      <div class="header-inner">
+        <div class="header-badge" aria-hidden="true">🌱</div>
+        <div>
+          <p class="eyebrow">PromptWars 2026 · Challenge 3</p>
+          <h1>Carbon Footprint<br><span class="accent-text">Awareness Platform</span></h1>
+          <p class="intro">
+            Discover your monthly CO₂e impact, see exactly where it comes from,
+            and get personalised AI actions that fit your lifestyle — in under two minutes.
+          </p>
+        </div>
+      </div>
+      <!-- Hero stats bar -->
+      <div class="hero-stats" role="list" aria-label="Global context statistics">
+        <div class="hero-stat" role="listitem">
+          <span class="hero-stat-value">4.7t</span>
+          <span class="hero-stat-label">Global avg/person/year</span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="hero-stat-value">2.0t</span>
+          <span class="hero-stat-label">Paris Agreement target</span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="hero-stat-value">3</span>
+          <span class="hero-stat-label">Categories tracked</span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="hero-stat-value">Gemini</span>
+          <span class="hero-stat-label">AI-powered insights</span>
+        </div>
       </div>
     </header>
 
-    <main class="layout">
-      <form id="footprint-form" class="panel" aria-label="Carbon footprint calculator">
-        <section>
-          <h2>Your Profile</h2>
+    <main class="layout" id="main-content">
+      <!-- ─── INPUT FORM ─── -->
+      <form id="footprint-form" class="panel" aria-label="Carbon footprint calculator" novalidate>
+
+        <!-- Section: Profile -->
+        <section aria-labelledby="section-profile">
+          <div class="section-header">
+            <span class="section-icon" aria-hidden="true">👤</span>
+            <h2 id="section-profile">Your Profile</h2>
+          </div>
           <div class="grid two">
-            <label>Name <input name="name" required value="Adarsh" /></label>
-            <label>Country <input name="country" required value="India" /></label>
-            <label>Goal
-              <select name="goal">
+            <div class="field">
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" required value="Adarsh"
+                     autocomplete="given-name" maxlength="80"
+                     aria-describedby="name-hint" />
+              <span class="field-hint" id="name-hint">Used to personalise your insights</span>
+            </div>
+            <div class="field">
+              <label for="country">Country</label>
+              <input id="country" name="country" type="text" required value="India"
+                     autocomplete="country-name" maxlength="80" />
+            </div>
+            <div class="field">
+              <label for="goal">Primary goal</label>
+              <select id="goal" name="goal" aria-describedby="goal-hint">
                 <option value="reduce_emissions">Reduce emissions</option>
                 <option value="save_money">Save money</option>
                 <option value="build_habits">Build habits</option>
                 <option value="learn">Learn</option>
               </select>
-            </label>
-            <label>Household size <input name="household_size" type="number" min="1" max="12" value="3" /></label>
+              <span class="field-hint" id="goal-hint">Tailors the recommendation style</span>
+            </div>
+            <div class="field">
+              <label for="household_size">Household size</label>
+              <input id="household_size" name="household_size" type="number"
+                     min="1" max="12" value="3"
+                     aria-describedby="household-hint" />
+              <span class="field-hint" id="household-hint">Home energy is split across members</span>
+            </div>
           </div>
         </section>
 
-        <section>
-          <h2>Home Energy</h2>
+        <!-- Section: Home Energy -->
+        <section aria-labelledby="section-home">
+          <div class="section-header">
+            <span class="section-icon" aria-hidden="true">🏠</span>
+            <h2 id="section-home">Home Energy</h2>
+          </div>
           <div class="grid three">
-            <label>Electricity kWh/month <input name="electricity_kwh" type="number" min="0" value="220" /></label>
-            <label>Gas therms/month <input name="natural_gas_therms" type="number" min="0" value="0" /></label>
-            <label>Renewable electricity % <input name="renewable_percent" type="number" min="0" max="100" value="10" /></label>
+            <div class="field">
+              <label for="electricity_kwh">Electricity (kWh/month)</label>
+              <input id="electricity_kwh" name="electricity_kwh" type="number"
+                     min="0" max="5000" value="220"
+                     aria-describedby="elec-hint" />
+              <span class="field-hint" id="elec-hint">Check your electricity bill</span>
+            </div>
+            <div class="field">
+              <label for="natural_gas_therms">Gas (therms/month)</label>
+              <input id="natural_gas_therms" name="natural_gas_therms" type="number"
+                     min="0" max="1000" value="0" />
+            </div>
+            <div class="field">
+              <label for="renewable_percent">Renewable electricity (%)</label>
+              <input id="renewable_percent" name="renewable_percent" type="number"
+                     min="0" max="100" value="10"
+                     aria-describedby="renew-hint" />
+              <span class="field-hint" id="renew-hint">0 if unknown</span>
+            </div>
           </div>
         </section>
 
-        <section>
-          <h2>Transport</h2>
+        <!-- Section: Transport -->
+        <section aria-labelledby="section-transport">
+          <div class="section-header">
+            <span class="section-icon" aria-hidden="true">🚗</span>
+            <h2 id="section-transport">Transport</h2>
+          </div>
           <div class="grid two">
-            <label>Main travel mode
-              <select name="transport_mode">
+            <div class="field">
+              <label for="transport_mode">Main travel mode</label>
+              <select id="transport_mode" name="transport_mode">
                 <option value="car_petrol">Petrol car</option>
                 <option value="car_diesel">Diesel car</option>
                 <option value="car_ev">Electric car</option>
                 <option value="bus">Bus</option>
                 <option value="train">Train</option>
-                <option value="flight_short">Short flight</option>
+                <option value="flight_short">Short-haul flight</option>
                 <option value="walk_cycle">Walk or cycle</option>
               </select>
-            </label>
-            <label>Distance km/week <input name="km_per_week" type="number" min="0" value="90" /></label>
+            </div>
+            <div class="field">
+              <label for="km_per_week">Distance (km/week)</label>
+              <input id="km_per_week" name="km_per_week" type="number"
+                     min="0" max="20000" value="90"
+                     aria-describedby="km-hint" />
+              <span class="field-hint" id="km-hint">Average weekly travel by this mode</span>
+            </div>
           </div>
         </section>
 
-        <section>
-          <h2>Food and Lifestyle</h2>
+        <!-- Section: Food & Lifestyle -->
+        <section aria-labelledby="section-lifestyle">
+          <div class="section-header">
+            <span class="section-icon" aria-hidden="true">🍽️</span>
+            <h2 id="section-lifestyle">Food &amp; Lifestyle</h2>
+          </div>
           <div class="grid four">
-            <label>Diet
-              <select name="diet">
+            <div class="field">
+              <label for="diet">Diet type</label>
+              <select id="diet" name="diet" aria-describedby="diet-hint">
                 <option value="mixed">Mixed</option>
-                <option value="meat_heavy">Meat heavy</option>
+                <option value="meat_heavy">Meat-heavy</option>
                 <option value="vegetarian">Vegetarian</option>
                 <option value="vegan">Vegan</option>
               </select>
-            </label>
-            <label>Meals out/week <input name="meals_out_per_week" type="number" min="0" value="3" /></label>
-            <label>New items/month <input name="new_items_per_month" type="number" min="0" value="2" /></label>
-            <label>Waste bags/week <input name="waste_bags_per_week" type="number" min="0" value="2" /></label>
+              <span class="field-hint" id="diet-hint">Largest single lifestyle factor</span>
+            </div>
+            <div class="field">
+              <label for="meals_out_per_week">Meals out / week</label>
+              <input id="meals_out_per_week" name="meals_out_per_week" type="number"
+                     min="0" max="35" value="3" />
+            </div>
+            <div class="field">
+              <label for="new_items_per_month">New items / month</label>
+              <input id="new_items_per_month" name="new_items_per_month" type="number"
+                     min="0" max="200" value="2"
+                     aria-describedby="items-hint" />
+              <span class="field-hint" id="items-hint">Clothes, gadgets, etc.</span>
+            </div>
+            <div class="field">
+              <label for="waste_bags_per_week">Waste bags / week</label>
+              <input id="waste_bags_per_week" name="waste_bags_per_week" type="number"
+                     min="0" max="50" value="2" />
+            </div>
           </div>
         </section>
 
-        <button type="submit">Calculate footprint</button>
-        <p id="form-status" role="status" aria-live="polite"></p>
+        <button type="submit" id="submit-btn" aria-describedby="form-status">
+          <span class="btn-icon" aria-hidden="true">⚡</span>
+          Calculate my footprint
+        </button>
+        <p id="form-status" role="status" aria-live="polite" aria-atomic="true"></p>
       </form>
 
-      <section class="results" aria-label="Personalized carbon footprint result">
-        <div class="summary">
-          <p class="eyebrow">Estimated impact</p>
-          <strong id="monthly-total">--</strong>
-          <span>kg CO2e/month</span>
-          <p id="yearly-total">Submit the form to see your yearly estimate.</p>
+      <!-- ─── RESULTS PANEL ─── -->
+      <section class="results" id="results-panel" aria-label="Personalised carbon footprint results" aria-live="polite">
+
+        <!-- Hero summary -->
+        <div class="summary" id="summary-block">
+          <div class="summary-empty" id="summary-empty" aria-label="Results will appear here after you submit the form">
+            <span class="summary-empty-icon" aria-hidden="true">🌍</span>
+            <p>Fill in the form and calculate your footprint to see your personalised results here.</p>
+          </div>
+          <div class="summary-data hidden" id="summary-data">
+            <p class="eyebrow">Your estimated impact</p>
+            <div class="summary-numbers">
+              <div>
+                <strong id="monthly-total" aria-label="Monthly CO2 equivalent">--</strong>
+                <span class="unit">kg CO₂e / month</span>
+              </div>
+              <div class="summary-sep" aria-hidden="true">·</div>
+              <div>
+                <strong id="yearly-total" aria-label="Yearly CO2 equivalent in tonnes">--</strong>
+                <span class="unit">tonnes / year</span>
+              </div>
+            </div>
+            <div class="confidence-bar-wrap" id="confidence-wrap">
+              <span class="confidence-label">Estimate confidence: <strong id="confidence-pct">--</strong></span>
+              <div class="confidence-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Estimate confidence">
+                <div class="confidence-fill" id="confidence-fill"></div>
+              </div>
+            </div>
+            <p class="methodology-note" id="methodology-note"></p>
+          </div>
         </div>
 
-        <div>
-          <h2>Breakdown</h2>
-          <div id="breakdown" class="cards"></div>
+        <!-- Breakdown chart -->
+        <div id="breakdown-section" class="hidden" aria-labelledby="breakdown-heading">
+          <h2 id="breakdown-heading">
+            <span aria-hidden="true">📊</span> Emissions Breakdown
+          </h2>
+          <p class="section-desc">Where your CO₂e comes from this month</p>
+          <div id="breakdown" class="breakdown-list" role="list"></div>
         </div>
 
-        <div>
-          <h2>Personalized Actions</h2>
-          <div id="actions" class="cards"></div>
+        <!-- Personalized Actions -->
+        <div id="actions-section" class="hidden" aria-labelledby="actions-heading">
+          <h2 id="actions-heading">
+            <span aria-hidden="true">🎯</span> Personalised Actions
+          </h2>
+          <p class="section-desc">Ranked by estimated monthly CO₂e saving</p>
+          <div id="actions" class="cards" role="list"></div>
         </div>
 
-        <div>
-          <h2>Insights</h2>
-          <ul id="insights"></ul>
+        <!-- AI Insights -->
+        <div id="insights-section" class="hidden" aria-labelledby="insights-heading">
+          <h2 id="insights-heading">
+            <span aria-hidden="true">🤖</span> AI Insights
+          </h2>
+          <p class="section-desc">Gemini-powered personalised guidance</p>
+          <ul id="insights" class="insights-list"></ul>
         </div>
+
+        <!-- Global Context -->
+        <div id="context-section" class="hidden" aria-labelledby="context-heading">
+          <h2 id="context-heading">
+            <span aria-hidden="true">🌐</span> How You Compare
+          </h2>
+          <div class="context-bars" id="context-bars" role="list"></div>
+        </div>
+
       </section>
     </main>
+
+    <!-- Educational footer -->
+    <footer class="app-footer" role="contentinfo">
+      <div class="footer-inner">
+        <div class="footer-col">
+          <h3>What is CO₂e?</h3>
+          <p>CO₂ equivalent (CO₂e) combines all greenhouse gases — carbon dioxide, methane, nitrous oxide — into a single comparable unit based on their warming effect.</p>
+        </div>
+        <div class="footer-col">
+          <h3>Why does it matter?</h3>
+          <p>The average global citizen needs to reach under 2 tonnes CO₂e/year by 2050 to limit warming to 1.5 °C. Most people in developed countries are 3–10× over that target.</p>
+        </div>
+        <div class="footer-col">
+          <h3>Methodology</h3>
+          <p>Estimates use published IPCC and EPA emission factors. Calculations are transparent and deterministic. Gemini AI personalises the phrasing of insights — it does not change the numbers.</p>
+        </div>
+      </div>
+      <p class="footer-credit">Built with Gemini AI · FastAPI · Google Cloud Run · PromptWars 2026</p>
+    </footer>
 
     <script src="/static/app.js"></script>
   </body>

@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest_tmp_data/
 .coverage
 htmlcov/
 
@@ -14,3 +15,4 @@ venv/
 node_modules/
 
 *.log
+assessments.jsonl
