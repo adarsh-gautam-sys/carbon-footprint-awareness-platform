@@ -17,3 +17,9 @@ node_modules/
 *.log
 assessments.jsonl
 requirements.txt
+
+docs/linkedin-post-draft.md
+docs/prompt-engineering.md
+docs/scoring-checklist.md
+docs/security-check.md
+docs/tool-usage.md
