@@ -141,12 +141,15 @@ def test_vegan_diet_lower_than_meat_heavy():
 
 
 def test_zero_lifestyle_extras_returns_just_diet():
-    req = make_request(lifestyle={
-        "diet": "vegan",
-        "meals_out_per_week": 0,
-        "new_items_per_month": 0,
-        "waste_bags_per_week": 0,
-    })
+    req = make_request(
+        profile={"name": "Sam", "country": "US", "goal": "reduce_emissions"},
+        lifestyle={
+            "diet": "vegan",
+            "meals_out_per_week": 0,
+            "new_items_per_month": 0,
+            "waste_bags_per_week": 0,
+        }
+    )
     from app.carbon import DIET_FACTORS_KG_PER_MONTH
     from app.models import DietType
     assert abs(calculate_lifestyle_kg(req) - DIET_FACTORS_KG_PER_MONTH[DietType.vegan]) < 0.01

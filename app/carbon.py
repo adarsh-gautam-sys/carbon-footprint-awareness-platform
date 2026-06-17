@@ -27,20 +27,67 @@ TRANSPORT_FACTORS_KG_PER_KM: dict[TransportMode, float] = {
     TransportMode.walk_cycle:    0.000,   # Zero operational emissions
 }
 
-DIET_FACTORS_KG_PER_MONTH: dict[DietType, float] = {
-    DietType.meat_heavy:   330.0,   # ~80g red meat/day diet
-    DietType.mixed:        230.0,   # Average omnivore with moderate meat
-    DietType.vegetarian:   170.0,   # Lacto-ovo vegetarian
-    DietType.vegan:        130.0,   # Whole-food plant-based
+# Grid electricity carbon intensity (kg CO2e per kWh)
+# Sources: India CEA 2022-23 (0.71), US EPA eGRID 2022 (0.37), UK DESNZ 2023 (0.18), China MEE (0.58)
+ELECTRICITY_BY_COUNTRY: dict[str, float] = {
+    "india": 0.71,
+    "united states": 0.37,
+    "united states of america": 0.37,
+    "us": 0.37,
+    "usa": 0.37,
+    "united kingdom": 0.18,
+    "uk": 0.18,
+    "gb": 0.18,
+    "great britain": 0.18,
+    "china": 0.58,
+}
+DEFAULT_ELECTRICITY_KG_PER_KWH = 0.43  # Global average grid factor
+
+# Dietary emissions (kg CO2e per month)
+# India factors are based on standard Indian diets (0.7 to 2.0 kg CO2e/day)
+DIET_FACTORS_INDIA: dict[DietType, float] = {
+    DietType.meat_heavy:   60.0,    # ~2.0 kg/day, chicken/mutton/fish based omnivore
+    DietType.mixed:        40.0,    # ~1.3 kg/day, moderate meat/dairy omnivore
+    DietType.vegetarian:   26.0,    # ~0.85 kg/day, standard lacto-vegetarian diet
+    DietType.vegan:        20.0,    # ~0.66 kg/day, predominantly plant-based/cereal diet
 }
 
-ELECTRICITY_KG_PER_KWH  = 0.71    # India CEA 2022-23 grid average
+# Western/Global factors are based on Scarborough et al. 2023 Nature Food (Oxford)
+# Vegan: 2.47 kg/day (~75 kg/mo), Vegetarian: 4.16 kg/day (~126 kg/mo), Mixed: ~5.7 kg/day (~175 kg/mo), Meat-heavy: 10.24 kg/day (~312 kg/mo)
+DIET_FACTORS_GLOBAL: dict[DietType, float] = {
+    DietType.meat_heavy:   310.0,
+    DietType.mixed:        175.0,
+    DietType.vegetarian:   125.0,
+    DietType.vegan:        75.0,
+}
+
+# Define legacy variable to avoid breaking test imports
+DIET_FACTORS_KG_PER_MONTH = DIET_FACTORS_GLOBAL
+
+ELECTRICITY_KG_PER_KWH  = 0.71    # India CEA 2022-23 grid average (legacy constant)
 NATURAL_GAS_KG_PER_THERM = 5.3    # EPA AP-42 combustion factor
-MEAL_OUT_KG              = 4.5    # Restaurant lifecycle (food + energy + waste)
+
+# Restaurant meal lifecycle factor (kg CO2e per meal)
+MEAL_OUT_KG_INDIA        = 1.5
+MEAL_OUT_KG_GLOBAL       = 4.5
+
 NEW_ITEM_KG              = 18.0   # Consumer goods lifecycle average (clothing/electronics)
 WASTE_BAG_KG             = 2.2    # EPA WARM landfill model per 13-gallon bag
 
 WEEKS_PER_MONTH = 4.345  # 365.25 / 12 / 7
+
+def get_electricity_factor(country: str) -> float:
+    return ELECTRICITY_BY_COUNTRY.get(country.strip().lower(), DEFAULT_ELECTRICITY_KG_PER_KWH)
+
+def get_diet_factors(country: str) -> dict[DietType, float]:
+    if country.strip().lower() == "india":
+        return DIET_FACTORS_INDIA
+    return DIET_FACTORS_GLOBAL
+
+def get_meal_out_factor(country: str) -> float:
+    if country.strip().lower() == "india":
+        return MEAL_OUT_KG_INDIA
+    return MEAL_OUT_KG_GLOBAL
 
 # High-emission car modes for action targeting
 CAR_MODES = {TransportMode.car_petrol, TransportMode.car_diesel}
@@ -57,7 +104,8 @@ def _round_kg(value: float) -> float:
 def calculate_home_kg(request: FootprintRequest) -> float:
     """Monthly home energy CO2e allocated to this household member."""
     nonrenewable_share = (100.0 - request.home.renewable_percent) / 100.0
-    electricity = request.home.electricity_kwh * ELECTRICITY_KG_PER_KWH * nonrenewable_share
+    electricity_factor = get_electricity_factor(request.profile.country)
+    electricity = request.home.electricity_kwh * electricity_factor * nonrenewable_share
     gas = request.home.natural_gas_therms * NATURAL_GAS_KG_PER_THERM
     return (electricity + gas) / request.home.household_size
 
@@ -72,8 +120,12 @@ def calculate_transport_kg(request: FootprintRequest) -> float:
 
 def calculate_lifestyle_kg(request: FootprintRequest) -> float:
     """Monthly lifestyle CO2e: diet + meals out + purchases + waste."""
-    diet      = DIET_FACTORS_KG_PER_MONTH[request.lifestyle.diet]
-    meals     = request.lifestyle.meals_out_per_week * WEEKS_PER_MONTH * MEAL_OUT_KG
+    diet_factors = get_diet_factors(request.profile.country)
+    diet = diet_factors[request.lifestyle.diet]
+    
+    meal_factor = get_meal_out_factor(request.profile.country)
+    meals = request.lifestyle.meals_out_per_week * WEEKS_PER_MONTH * meal_factor
+    
     purchases = request.lifestyle.new_items_per_month * NEW_ITEM_KG
     waste     = request.lifestyle.waste_bags_per_week * WEEKS_PER_MONTH * WASTE_BAG_KG
     return diet + meals + purchases + waste
@@ -81,12 +133,13 @@ def calculate_lifestyle_kg(request: FootprintRequest) -> float:
 
 def calculate_categories(request: FootprintRequest) -> list[CategoryResult]:
     """Compute CO2e for all three categories and return transparent results."""
+    electricity_factor = get_electricity_factor(request.profile.country)
     values = [
         (
             "Home energy",
             calculate_home_kg(request),
             (
-                f"Electricity at {ELECTRICITY_KG_PER_KWH} kg CO\u2082e/kWh scaled to "
+                f"Electricity at {electricity_factor} kg CO\u2082e/kWh scaled to "
                 f"{100 - request.home.renewable_percent:.0f}% non-renewable, "
                 f"divided across {request.home.household_size} household member(s)."
                 + (f" Gas: {request.home.natural_gas_therms} therms \u00d7 {NATURAL_GAS_KG_PER_THERM} kg CO\u2082e/therm." if request.home.natural_gas_therms > 0 else "")
@@ -179,7 +232,10 @@ def generate_actions(
 
     # ── Diet ──
     if request.lifestyle.diet in {DietType.meat_heavy, DietType.mixed}:
-        saving_kg = 38.0 if request.lifestyle.diet == DietType.meat_heavy else 24.0
+        if request.profile.country.strip().lower() == "india":
+            saving_kg = 6.0 if request.lifestyle.diet == DietType.meat_heavy else 3.0
+        else:
+            saving_kg = 20.0 if request.lifestyle.diet == DietType.meat_heavy else 10.0
         actions.append(
             ActionItem(
                 title="Try two lower-carbon meals each week (plant-based swap)",

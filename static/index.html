@@ -8,44 +8,127 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <!-- Skip link for keyboard/screen reader users -->
     <a class="skip-link" href="#main-content">Skip to main content</a>
 
-    <header class="app-header" role="banner">
-      <div class="header-inner">
-        <div class="header-badge" aria-hidden="true">🌱</div>
-        <div>
-          <p class="eyebrow">PromptWars 2026 · Challenge 3</p>
-          <h1>Carbon Footprint<br><span class="accent-text">Awareness Platform</span></h1>
-          <p class="intro">
-            Discover your monthly CO₂e impact, see exactly where it comes from,
-            and get personalised AI actions that fit your lifestyle — in under two minutes.
-          </p>
+    <section class="hero-video-section">
+      <div class="hero-video-bg">
+        <video id="hero-video" src="/static/assets/videos/Transform_Data_0.mp4" muted playsinline preload="auto" style="opacity: 0;"></video>
+      </div>
+      <div class="hero-overlay"></div>
+      
+      <nav class="hero-nav">
+        <div class="nav-logo">CarbonTrack</div>
+
+        <div class="nav-actions">
+          <button class="nav-btn-docs" onclick="window.open('https://github.com/adarsh-gautam-sys/carbon-footprint-awareness-platform', '_blank')">View Repo</button>
+          <button class="nav-btn-calc" onclick="document.getElementById('main-content').scrollIntoView({ behavior: 'smooth' })">Calculate Now</button>
+        </div>
+      </nav>
+
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dark">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm-1-11v6h2v-6h3l-4-5-4 5h3z"/></svg>
+            PromptWars 2026
+          </span>
+          <span class="badge-light">Challenge 3 · Carbon Awareness</span>
+        </div>
+        
+        <h1 class="hero-headline">Understand Your<br>Carbon Footprint</h1>
+        <p class="hero-sub">Track your CO₂e impact across home, transport, and lifestyle. Get personalised AI actions from Gemini — in under two minutes.</p>
+        
+        <div class="hero-stats-glass">
+          <div class="hero-stat-item">
+            <span class="stat-val">4.7t</span>
+            <span class="stat-lbl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Global avg/person/yr</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="hero-stat-item">
+            <span class="stat-val">2.0t</span>
+            <span class="stat-lbl">Paris Agreement target</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="hero-stat-item">
+            <span class="stat-val">3</span>
+            <span class="stat-lbl">Emission categories</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="hero-stat-item">
+            <span class="stat-val">Gemini</span>
+            <span class="stat-lbl">AI-powered insights</span>
+          </div>
+        </div>
+
+        <div class="hero-cta-row">
+          <button class="cta-primary" onclick="document.getElementById('footprint-form').scrollIntoView({ behavior: 'smooth', block: 'start' })">Calculate My Footprint</button>
+          <button class="cta-secondary" onclick="document.querySelector('.app-footer').scrollIntoView({ behavior: 'smooth' })">Learn the Methodology →</button>
+        </div>
+
+        <div class="hero-scroll-indicator" onclick="document.getElementById('main-content').scrollIntoView({ behavior: 'smooth' })">
+          <svg class="bounce" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <span>Scroll to calculate</span>
         </div>
       </div>
-      <!-- Hero stats bar -->
-      <div class="hero-stats" role="list" aria-label="Global context statistics">
-        <div class="hero-stat" role="listitem">
-          <span class="hero-stat-value">4.7t</span>
-          <span class="hero-stat-label">Global avg/person/year</span>
-        </div>
-        <div class="hero-stat" role="listitem">
-          <span class="hero-stat-value">2.0t</span>
-          <span class="hero-stat-label">Paris Agreement target</span>
-        </div>
-        <div class="hero-stat" role="listitem">
-          <span class="hero-stat-value">3</span>
-          <span class="hero-stat-label">Categories tracked</span>
-        </div>
-        <div class="hero-stat" role="listitem">
-          <span class="hero-stat-value">Gemini</span>
-          <span class="hero-stat-label">AI-powered insights</span>
-        </div>
-      </div>
-    </header>
+
+      <script>
+        (function() {
+          const video = document.getElementById('hero-video');
+          let fadingOutRef = false;
+          let rafId = null;
+
+          function fadeVideo(targetOpacity, duration) {
+            cancelAnimationFrame(rafId);
+            const startOpacity = parseFloat(video.style.opacity) || 0;
+            const startTime = performance.now();
+            
+            function step(currentTime) {
+              const elapsed = currentTime - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+              const currentOpacity = startOpacity + (targetOpacity - startOpacity) * progress;
+              video.style.opacity = currentOpacity;
+              
+              if (progress < 1) {
+                rafId = requestAnimationFrame(step);
+              }
+            }
+            rafId = requestAnimationFrame(step);
+          }
+
+          video.addEventListener('loadeddata', () => {
+            fadeVideo(1, 250);
+          });
+
+          video.addEventListener('timeupdate', () => {
+            if (video.duration - video.currentTime <= 0.55 && !fadingOutRef) {
+              fadingOutRef = true;
+              fadeVideo(0, 250);
+            }
+          });
+
+          video.addEventListener('ended', () => {
+            video.style.opacity = 0;
+            setTimeout(() => {
+              video.currentTime = 0;
+              fadingOutRef = false;
+              video.play();
+              fadeVideo(1, 250);
+            }, 100);
+          });
+
+          if (video.readyState >= 3) {
+            fadeVideo(1, 250);
+            video.play();
+          } else {
+            video.play().catch(e => console.log('Autoplay prevented', e));
+          }
+        })();
+      </script>
+    </section>
 
     <main class="layout" id="main-content">
       <!-- ─── INPUT FORM ─── -->
@@ -54,7 +137,6 @@
         <!-- Section: Profile -->
         <section aria-labelledby="section-profile">
           <div class="section-header">
-            <span class="section-icon" aria-hidden="true">👤</span>
             <h2 id="section-profile">Your Profile</h2>
           </div>
           <div class="grid two">
@@ -93,7 +175,6 @@
         <!-- Section: Home Energy -->
         <section aria-labelledby="section-home">
           <div class="section-header">
-            <span class="section-icon" aria-hidden="true">🏠</span>
             <h2 id="section-home">Home Energy</h2>
           </div>
           <div class="grid three">
@@ -122,7 +203,6 @@
         <!-- Section: Transport -->
         <section aria-labelledby="section-transport">
           <div class="section-header">
-            <span class="section-icon" aria-hidden="true">🚗</span>
             <h2 id="section-transport">Transport</h2>
           </div>
           <div class="grid two">
@@ -151,7 +231,6 @@
         <!-- Section: Food & Lifestyle -->
         <section aria-labelledby="section-lifestyle">
           <div class="section-header">
-            <span class="section-icon" aria-hidden="true">🍽️</span>
             <h2 id="section-lifestyle">Food &amp; Lifestyle</h2>
           </div>
           <div class="grid four">
@@ -186,7 +265,6 @@
         </section>
 
         <button type="submit" id="submit-btn" aria-describedby="form-status">
-          <span class="btn-icon" aria-hidden="true">⚡</span>
           Calculate my footprint
         </button>
         <p id="form-status" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -198,7 +276,6 @@
         <!-- Hero summary -->
         <div class="summary" id="summary-block">
           <div class="summary-empty" id="summary-empty" aria-label="Results will appear here after you submit the form">
-            <span class="summary-empty-icon" aria-hidden="true">🌍</span>
             <p>Fill in the form and calculate your footprint to see your personalised results here.</p>
           </div>
           <div class="summary-data hidden" id="summary-data">
@@ -227,7 +304,7 @@
         <!-- Breakdown chart -->
         <div id="breakdown-section" class="hidden" aria-labelledby="breakdown-heading">
           <h2 id="breakdown-heading">
-            <span aria-hidden="true">📊</span> Emissions Breakdown
+            Emissions Breakdown
           </h2>
           <p class="section-desc">Where your CO₂e comes from this month</p>
           <div id="breakdown" class="breakdown-list" role="list"></div>
@@ -236,7 +313,7 @@
         <!-- Personalized Actions -->
         <div id="actions-section" class="hidden" aria-labelledby="actions-heading">
           <h2 id="actions-heading">
-            <span aria-hidden="true">🎯</span> Personalised Actions
+            Personalised Actions
           </h2>
           <p class="section-desc">Ranked by estimated monthly CO₂e saving</p>
           <div id="actions" class="cards" role="list"></div>
@@ -245,7 +322,7 @@
         <!-- AI Insights -->
         <div id="insights-section" class="hidden" aria-labelledby="insights-heading">
           <h2 id="insights-heading">
-            <span aria-hidden="true">🤖</span> AI Insights
+            AI Insights
           </h2>
           <p class="section-desc">Gemini-powered personalised guidance</p>
           <ul id="insights" class="insights-list"></ul>
@@ -254,7 +331,7 @@
         <!-- Global Context -->
         <div id="context-section" class="hidden" aria-labelledby="context-heading">
           <h2 id="context-heading">
-            <span aria-hidden="true">🌐</span> How You Compare
+            How You Compare
           </h2>
           <div class="context-bars" id="context-bars" role="list"></div>
         </div>

@@ -12,3 +12,6 @@ venv
 .env
 .env.*
 !.env.example
+
+# Local resources
+Transform_Data.md
