@@ -4,7 +4,7 @@
 
 > *Design a solution that helps individuals understand, track, and reduce their carbon footprint through simple actions and personalised insights.*
 
-🚀 **Live on Google Cloud Run:** https://promptwars-agent-239331599550.us-central1.run.app
+**Live on Google Cloud Run:** https://promptwars-agent-w5jjhm6mwa-uc.a.run.app
 
 ---
 
@@ -24,13 +24,12 @@ The Carbon Footprint Awareness Platform is a production-ready web application th
 
 | Layer | What it does |
 |---|---|
-| **Frontend** | Responsive HTML/CSS/JS with animated breakdown bars, effort-coded action cards, global comparison, and educational footer |
-| **Backend** | FastAPI with Pydantic validation, typed OpenAPI schema, and configurable CORS |
+| **API Service** | FastAPI backend with Pydantic validation, typed OpenAPI schema, and configurable CORS |
 | **AI Engine** | Gemini 2.0 Flash for personalised insights; deterministic fallback always works |
 | **Carbon Engine** | Transparent factor-based calculations with source citations in code |
 | **Storage** | Firestore (production) or local JSONL (development) |
 | **Deployment** | Dockerfile + Cloud Run PowerShell script + service YAML |
-| **Tests** | 41 tests: unit, integration, edge cases, validation, and API boundary tests |
+| **Tests** | 42 passed tests: unit, integration, edge cases, validation, and API boundary tests |
 
 ---
 
@@ -52,7 +51,7 @@ copy .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Open **http://127.0.0.1:8000** — the UI works without a Gemini key using deterministic fallback insights.
+Open **http://127.0.0.1:8000** — the API and service work without a Gemini key using deterministic fallback insights.
 
 ---
 
@@ -112,10 +111,7 @@ See [`docs/google-cloud-run.md`](docs/google-cloud-run.md) for full setup includ
 ## Architecture Overview
 
 ```
-User browser
-    │
-    ▼
-Static frontend (HTML + CSS + JS)
+Client / API Client
     │  POST /api/footprint
     ▼
 FastAPI + Pydantic validation
