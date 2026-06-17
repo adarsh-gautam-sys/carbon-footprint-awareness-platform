@@ -4,7 +4,7 @@
 
 > *Design a solution that helps individuals understand, track, and reduce their carbon footprint through simple actions and personalised insights.*
 
-**Live on Google Cloud Run:** https://promptwars-agent-239331599550.us-central1.run.app
+**Live on Google Cloud Run:** https://promptwars-agent-w5jjhm6mwa-uc.a.run.app
 
 ---
 
