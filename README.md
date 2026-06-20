@@ -20,16 +20,54 @@ The Carbon Footprint Awareness Platform is a production-ready web application th
 
 ---
 
+## Google Services Used
+
+| Google Service | Role in this Platform | Why it was chosen |
+|---|---|---|
+| **Gemini 2.0 Flash** (`google-genai` SDK) | Generates 3 personalised, grounded insights per assessment | Fastest Gemini model; async API avoids blocking the event loop |
+| **Google Cloud Run** | Hosts the containerised FastAPI backend | Fully serverless, scales to zero, no infrastructure management |
+| **Google Cloud Firestore** | Persists assessments in production (`FIRESTORE_ENABLED=true`) | Native async client, real-time capable, integrates with Cloud IAM |
+| **Google Cloud Logging** | Structured JSON logs forwarded to Cloud Logging | Replaces print(); enables log-based alerting and dashboards |
+| **Google Secret Manager** | Stores `GEMINI_API_KEY` in production | Zero secrets in code or env files in Cloud Run |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Browser / API Client] -->|POST /api/footprint| B[FastAPI + Pydantic Validation]
+    B --> C{Cache Hit?}
+    C -->|Yes — 0ms| Z[Return Cached Response]
+    C -->|No| D[Carbon Engine\nIPCC/EPA/DEFRA factors\nHome + Transport + Lifestyle]
+    D --> E[Action Ranker\nSorted by kg CO₂e/month]
+    E --> F{Semaphore\nmax 3 concurrent}
+    F -->|Acquired| G[Gemini 2.0 Flash\nasync insights]
+    G -->|Error / No key| H[Deterministic Fallback\nInsights]
+    G --> I[FootprintResponse]
+    H --> I
+    I --> J[(Firestore / Local JSONL)]
+    I --> K[TTLCache — 1hr]
+    K --> Z
+    I --> A
+```
+
+---
+
 ## Features
 
 | Layer | What it does |
 |---|---|
-| **API Service** | FastAPI backend with Pydantic validation, typed OpenAPI schema, and configurable CORS |
-| **AI Engine** | Gemini 2.0 Flash for personalised insights; deterministic fallback always works |
-| **Carbon Engine** | Transparent factor-based calculations with source citations in code |
-| **Storage** | Firestore (production) or local JSONL (development) |
+| **Config** | `pydantic-settings` `BaseSettings` — all env vars centralised, never scattered `os.getenv()` |
+| **Cache** | `cachetools.TTLCache` — SHA-256 keyed, pre-seeded at startup; repeat requests return in < 1 ms |
+| **Rate Limiter** | `asyncio.Semaphore(3)` — caps concurrent Gemini calls, prevents `429 Resource Exhausted` |
+| **API Service** | Async FastAPI — all endpoints `async def`, non-blocking I/O throughout |
+| **AI Engine** | Gemini 2.0 Flash (async SDK); deterministic fallback always works without API key |
+| **Carbon Engine** | Transparent factor-based calculations with `lru_cache` on pure lookups |
+| **Storage** | Async Firestore (production) or `asyncio.to_thread` local JSONL (development) |
+| **Security** | Non-root Dockerfile (`appuser`), strict CORS allowlist, 6 security headers including CSP + HSTS |
 | **Deployment** | Dockerfile + Cloud Run PowerShell script + service YAML |
-| **Tests** | 42 passed tests: unit, integration, edge cases, validation, and API boundary tests |
+| **Tests** | 57 passing tests across 4 files: unit, integration, config, edge cases, cache, and API boundary tests |
 
 ---
 
@@ -61,7 +99,7 @@ Open **http://127.0.0.1:8000** — the API and service work without a Gemini key
 pytest tests\ -v
 ```
 
-Expected: **41 passed** across three test files.
+Expected: **57 passed** across four test files (`test_api.py`, `test_carbon.py`, `test_insights.py`, `test_config.py`).
 
 ---
 
@@ -75,7 +113,10 @@ Expected: **41 passed** across three test files.
 | `GOOGLE_CLOUD_REGION` | `us-central1` | Cloud Run region |
 | `FIRESTORE_ENABLED` | `false` | Set `true` to persist assessments in Firestore |
 | `LOCAL_DATA_DIR` | system temp | Local JSONL storage path for development |
-| `ALLOWED_ORIGINS` | `*` | Comma-separated allowed CORS origins for production |
+| `ALLOWED_ORIGINS` | localhost ports | Comma-separated allowed CORS origins — never `*` |
+| `MAX_CONCURRENT_LLM_CALLS` | `3` | Semaphore cap for concurrent Gemini requests |
+| `CACHE_MAX_SIZE` | `256` | Maximum number of cached responses |
+| `CACHE_TTL_SECONDS` | `3600` | Cache time-to-live in seconds |
 
 Copy `.env.example` to `.env` for local development. **Never commit real secrets.**
 
@@ -108,37 +149,11 @@ See [`docs/google-cloud-run.md`](docs/google-cloud-run.md) for full setup includ
 
 ---
 
-## Architecture Overview
-
-```
-Client / API Client
-    │  POST /api/footprint
-    ▼
-FastAPI + Pydantic validation
-    │
-    ├─► Carbon engine (carbon.py)
-    │       IPCC/EPA emission factors
-    │       Home + Transport + Lifestyle
-    │
-    ├─► Action ranker
-    │       Ranked by kg CO2e saved/month
-    │
-    ├─► Gemini 2.0 Flash (insights.py)
-    │       System instruction + grounded prompt
-    │       Deterministic fallback if unavailable
-    │
-    └─► Storage (storage.py)
-            Firestore (production)
-            Local JSONL (development)
-```
-
----
-
 ## Emission Factors (Key References)
 
 - Transport: DEFRA 2023 GHG Conversion Factors
 - Electricity: India CEA Grid Emission Factor 2022-23 (0.71 kg CO₂e/kWh)
-- Diet: Poore & Nemecek (2018), Oxford University food systems research
+- Diet: Poore & Nemecek (2018), Oxford University food systems research; Scarborough et al. 2023, Nature Food
 - Gas: EPA AP-42 combustion factors
 - Goods and waste: EPA WARM model lifecycle averages
 

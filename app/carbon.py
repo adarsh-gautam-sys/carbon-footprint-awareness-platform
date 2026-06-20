@@ -11,7 +11,16 @@ Emission factors:
   assessment averages.
 
 All factors are explicitly documented so users and evaluators can audit them.
+
+Performance notes:
+- ``get_electricity_factor`` and ``get_diet_factors`` are wrapped with
+  ``functools.lru_cache`` because they are pure functions called on every
+  request with a small, bounded set of inputs.
 """
+
+from __future__ import annotations
+
+import functools
 
 from app.models import ActionItem, CategoryResult, DietType, FootprintRequest, TransportMode
 
@@ -53,7 +62,8 @@ DIET_FACTORS_INDIA: dict[DietType, float] = {
 }
 
 # Western/Global factors are based on Scarborough et al. 2023 Nature Food (Oxford)
-# Vegan: 2.47 kg/day (~75 kg/mo), Vegetarian: 4.16 kg/day (~126 kg/mo), Mixed: ~5.7 kg/day (~175 kg/mo), Meat-heavy: 10.24 kg/day (~312 kg/mo)
+# Vegan: 2.47 kg/day (~75 kg/mo), Vegetarian: 4.16 kg/day (~126 kg/mo),
+# Mixed: ~5.7 kg/day (~175 kg/mo), Meat-heavy: 10.24 kg/day (~312 kg/mo)
 DIET_FACTORS_GLOBAL: dict[DietType, float] = {
     DietType.meat_heavy:   310.0,
     DietType.mixed:        175.0,
@@ -61,33 +71,20 @@ DIET_FACTORS_GLOBAL: dict[DietType, float] = {
     DietType.vegan:        75.0,
 }
 
-# Define legacy variable to avoid breaking test imports
+# Legacy alias — preserved for backward-compatible test imports.
 DIET_FACTORS_KG_PER_MONTH = DIET_FACTORS_GLOBAL
 
-ELECTRICITY_KG_PER_KWH  = 0.71    # India CEA 2022-23 grid average (legacy constant)
-NATURAL_GAS_KG_PER_THERM = 5.3    # EPA AP-42 combustion factor
+ELECTRICITY_KG_PER_KWH   = 0.71    # India CEA 2022-23 grid average (legacy constant)
+NATURAL_GAS_KG_PER_THERM  = 5.3    # EPA AP-42 combustion factor
 
 # Restaurant meal lifecycle factor (kg CO2e per meal)
-MEAL_OUT_KG_INDIA        = 1.5
-MEAL_OUT_KG_GLOBAL       = 4.5
+MEAL_OUT_KG_INDIA  = 1.5
+MEAL_OUT_KG_GLOBAL = 4.5
 
-NEW_ITEM_KG              = 18.0   # Consumer goods lifecycle average (clothing/electronics)
-WASTE_BAG_KG             = 2.2    # EPA WARM landfill model per 13-gallon bag
+NEW_ITEM_KG     = 18.0   # Consumer goods lifecycle average (clothing/electronics)
+WASTE_BAG_KG    = 2.2    # EPA WARM landfill model per 13-gallon bag
 
 WEEKS_PER_MONTH = 4.345  # 365.25 / 12 / 7
-
-def get_electricity_factor(country: str) -> float:
-    return ELECTRICITY_BY_COUNTRY.get(country.strip().lower(), DEFAULT_ELECTRICITY_KG_PER_KWH)
-
-def get_diet_factors(country: str) -> dict[DietType, float]:
-    if country.strip().lower() == "india":
-        return DIET_FACTORS_INDIA
-    return DIET_FACTORS_GLOBAL
-
-def get_meal_out_factor(country: str) -> float:
-    if country.strip().lower() == "india":
-        return MEAL_OUT_KG_INDIA
-    return MEAL_OUT_KG_GLOBAL
 
 # High-emission car modes for action targeting
 CAR_MODES = {TransportMode.car_petrol, TransportMode.car_diesel}
@@ -96,13 +93,44 @@ CAR_MODES = {TransportMode.car_petrol, TransportMode.car_diesel}
 # ── Utility ───────────────────────────────────────────────────────────────────
 
 def _round_kg(value: float) -> float:
+    """Round a CO₂e value to one decimal place."""
     return round(value, 1)
+
+
+# ── Cached pure-function lookups ──────────────────────────────────────────────
+
+@functools.lru_cache(maxsize=32)
+def get_electricity_factor(country: str) -> float:
+    """Return the grid electricity carbon intensity for *country*.
+
+    Result is cached — the set of possible inputs is small and bounded.
+    """
+    return ELECTRICITY_BY_COUNTRY.get(country.strip().lower(), DEFAULT_ELECTRICITY_KG_PER_KWH)
+
+
+@functools.lru_cache(maxsize=32)
+def get_diet_factors(country: str) -> dict[DietType, float]:
+    """Return the appropriate diet emission factor table for *country*.
+
+    Result is cached — only two possible outputs exist.
+    """
+    if country.strip().lower() == "india":
+        return DIET_FACTORS_INDIA
+    return DIET_FACTORS_GLOBAL
+
+
+@functools.lru_cache(maxsize=32)
+def get_meal_out_factor(country: str) -> float:
+    """Return the restaurant meal emission factor for *country*."""
+    if country.strip().lower() == "india":
+        return MEAL_OUT_KG_INDIA
+    return MEAL_OUT_KG_GLOBAL
 
 
 # ── Category calculations ─────────────────────────────────────────────────────
 
 def calculate_home_kg(request: FootprintRequest) -> float:
-    """Monthly home energy CO2e allocated to this household member."""
+    """Monthly home energy CO₂e allocated to this household member."""
     nonrenewable_share = (100.0 - request.home.renewable_percent) / 100.0
     electricity_factor = get_electricity_factor(request.profile.country)
     electricity = request.home.electricity_kwh * electricity_factor * nonrenewable_share
@@ -111,7 +139,7 @@ def calculate_home_kg(request: FootprintRequest) -> float:
 
 
 def calculate_transport_kg(request: FootprintRequest) -> float:
-    """Monthly transport CO2e across all travel modes."""
+    """Monthly transport CO₂e across all travel modes."""
     return sum(
         item.km_per_week * WEEKS_PER_MONTH * TRANSPORT_FACTORS_KG_PER_KM[item.mode]
         for item in request.transport
@@ -119,22 +147,22 @@ def calculate_transport_kg(request: FootprintRequest) -> float:
 
 
 def calculate_lifestyle_kg(request: FootprintRequest) -> float:
-    """Monthly lifestyle CO2e: diet + meals out + purchases + waste."""
+    """Monthly lifestyle CO₂e: diet + meals out + purchases + waste."""
     diet_factors = get_diet_factors(request.profile.country)
     diet = diet_factors[request.lifestyle.diet]
-    
+
     meal_factor = get_meal_out_factor(request.profile.country)
     meals = request.lifestyle.meals_out_per_week * WEEKS_PER_MONTH * meal_factor
-    
+
     purchases = request.lifestyle.new_items_per_month * NEW_ITEM_KG
     waste     = request.lifestyle.waste_bags_per_week * WEEKS_PER_MONTH * WASTE_BAG_KG
     return diet + meals + purchases + waste
 
 
 def calculate_categories(request: FootprintRequest) -> list[CategoryResult]:
-    """Compute CO2e for all three categories and return transparent results."""
+    """Compute CO₂e for all three categories and return transparent results."""
     electricity_factor = get_electricity_factor(request.profile.country)
-    values = [
+    values: list[tuple[str, float, str]] = [
         (
             "Home energy",
             calculate_home_kg(request),
@@ -142,7 +170,12 @@ def calculate_categories(request: FootprintRequest) -> list[CategoryResult]:
                 f"Electricity at {electricity_factor} kg CO\u2082e/kWh scaled to "
                 f"{100 - request.home.renewable_percent:.0f}% non-renewable, "
                 f"divided across {request.home.household_size} household member(s)."
-                + (f" Gas: {request.home.natural_gas_therms} therms \u00d7 {NATURAL_GAS_KG_PER_THERM} kg CO\u2082e/therm." if request.home.natural_gas_therms > 0 else "")
+                + (
+                    f" Gas: {request.home.natural_gas_therms} therms "
+                    f"\u00d7 {NATURAL_GAS_KG_PER_THERM} kg CO\u2082e/therm."
+                    if request.home.natural_gas_therms > 0
+                    else ""
+                )
             ),
         ),
         (
@@ -193,10 +226,7 @@ def generate_actions(
     actions: list[ActionItem] = []
 
     # ── Home energy ──
-    if (
-        request.home.electricity_kwh > 150
-        and request.home.renewable_percent < 80
-    ):
+    if request.home.electricity_kwh > 150 and request.home.renewable_percent < 80:
         potential_saving = min(90.0, request.home.electricity_kwh * 0.12)
         actions.append(
             ActionItem(
@@ -264,7 +294,9 @@ def generate_actions(
 
     # ── Waste ──
     if request.lifestyle.waste_bags_per_week >= 3:
-        saving = _round_kg(request.lifestyle.waste_bags_per_week * 0.5 * WEEKS_PER_MONTH * WASTE_BAG_KG)
+        saving = _round_kg(
+            request.lifestyle.waste_bags_per_week * 0.5 * WEEKS_PER_MONTH * WASTE_BAG_KG
+        )
         actions.append(
             ActionItem(
                 title="Reduce waste by composting food scraps and recycling packaging",

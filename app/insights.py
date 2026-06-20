@@ -1,21 +1,40 @@
 """Gemini-powered personalised insights with deterministic fallback.
 
 Design decisions:
+- ``generate_personalized_insights`` is an ``async def`` so it can be awaited
+  from the async endpoint and called within the LLM semaphore context.
+- The async Gemini SDK (``client.aio.models.generate_content``) is used to
+  avoid blocking the event loop during network I/O.
+- The shared ``genai.Client`` is initialised once at module import and reused
+  across requests — avoids per-request TCP handshake overhead.
 - System instruction sets role, tone, and safety guardrails.
 - User prompt grounds the model strictly in calculated numbers.
-- Output constraint (3 bullets, ≤30 words each) keeps the UI readable.
+- Output constraint (3 bullets, ≤32 words each) keeps the UI readable.
 - All Gemini errors fall back to locally-computed insights so the platform
   works reliably without a configured API key.
 """
 
+from __future__ import annotations
+
 import logging
-import os
 
 from google import genai
 
+from app.config import settings
 from app.models import ActionItem, CategoryResult, FootprintRequest
 
 logger = logging.getLogger(__name__)
+
+# ── Shared Gemini client (initialised once, reused across requests) ────────────
+_gemini_client: genai.Client | None = None
+
+if settings.gemini_api_key:
+    try:
+        _gemini_client = genai.Client(api_key=settings.gemini_api_key)
+        logger.info("Gemini client initialised (model=%s).", settings.gemini_model)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Gemini client init failed (%s); fallback will be used.", exc.__class__.__name__)
+
 
 SYSTEM_INSTRUCTION = """\
 You are a carbon footprint coach for an AI awareness platform.
@@ -98,21 +117,24 @@ Output only the 3 sentences, one per line.\
 """
 
 
-def generate_personalized_insights(
+async def generate_personalized_insights(
     request: FootprintRequest,
     categories: list[CategoryResult],
     actions: list[ActionItem],
 ) -> list[str]:
-    """Generate up to 3 personalised insights using Gemini, with fallback."""
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        logger.debug("GEMINI_API_KEY not set — using deterministic fallback insights.")
+    """Generate up to 3 personalised insights using Gemini, with fallback.
+
+    Uses the async Gemini SDK to avoid blocking the event loop during
+    network I/O. The shared ``_gemini_client`` is reused across requests.
+    Falls back to deterministic insights on any error or missing API key.
+    """
+    if _gemini_client is None:
+        logger.debug("Gemini client not available — using deterministic fallback insights.")
         return _fallback_insights(request, categories, actions)
 
     try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        response = await _gemini_client.aio.models.generate_content(
+            model=settings.gemini_model,
             contents=build_gemini_prompt(request, categories, actions),
             config={
                 "system_instruction": SYSTEM_INSTRUCTION,
@@ -133,6 +155,8 @@ def generate_personalized_insights(
         # Fall back if Gemini returned too little useful content
         logger.warning("Gemini returned insufficient content; using fallback.")
         return _fallback_insights(request, categories, actions)
-    except Exception as exc:
-        logger.warning("Gemini call failed (%s); using fallback insights.", exc.__class__.__name__)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Gemini call failed (%s); using fallback insights.", exc.__class__.__name__
+        )
         return _fallback_insights(request, categories, actions)

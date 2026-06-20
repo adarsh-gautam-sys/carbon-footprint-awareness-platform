@@ -1,5 +1,9 @@
 """Tests for the Gemini insights adapter and deterministic fallback."""
 
+from __future__ import annotations
+
+import asyncio
+
 import pytest
 
 from app.carbon import calculate_categories, generate_actions
@@ -30,25 +34,25 @@ def make_request(name: str = "Adarsh") -> FootprintRequest:
 
 # ── Fallback insights ─────────────────────────────────────────────────────────
 
-def test_fallback_returns_three_insights(monkeypatch):
+def test_fallback_returns_three_insights(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     req = make_request()
     cats = calculate_categories(req)
     acts = generate_actions(req, cats)
 
-    insights = generate_personalized_insights(req, cats, acts)
+    insights = asyncio.run(generate_personalized_insights(req, cats, acts))
 
     assert len(insights) == 3
     assert all(isinstance(i, str) and len(i) > 5 for i in insights)
 
 
-def test_fallback_first_insight_contains_name(monkeypatch):
+def test_fallback_first_insight_contains_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     req = make_request(name="Kavya")
     cats = calculate_categories(req)
     acts = generate_actions(req, cats)
 
-    insights = generate_personalized_insights(req, cats, acts)
+    insights = asyncio.run(generate_personalized_insights(req, cats, acts))
 
     assert "Kavya" in insights[0]
 
@@ -116,14 +120,14 @@ def test_prompt_contains_all_three_categories():
 
 # ── Gemini failure modes ──────────────────────────────────────────────────────
 
-def test_invalid_api_key_falls_back_gracefully(monkeypatch):
+def test_invalid_api_key_falls_back_gracefully(monkeypatch: pytest.MonkeyPatch) -> None:
     """Even with an invalid key, the function must return 3 insights, not raise."""
     monkeypatch.setenv("GEMINI_API_KEY", "invalid-key-for-testing")
     req = make_request()
     cats = calculate_categories(req)
     acts = generate_actions(req, cats)
 
-    insights = generate_personalized_insights(req, cats, acts)
+    insights = asyncio.run(generate_personalized_insights(req, cats, acts))
 
     assert len(insights) == 3
     assert all(len(i) > 5 for i in insights)
