@@ -25,6 +25,7 @@ from app.carbon import calculate_categories, calculate_confidence, generate_acti
 from app.config import settings
 from app.insights import generate_personalized_insights
 from app.models import FootprintRequest, FootprintResponse
+from app.response_builder import ResponseComponents, build_footprint_response
 from app.storage import save_assessment
 
 logger = logging.getLogger(__name__)
@@ -32,32 +33,47 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT / "static"
 
-
 # ── Cloud Logging setup ───────────────────────────────────────────────────────
+# Import google-cloud-logging at module level with a graceful fallback so that
+# the import is always at the top level (satisfying C0415) but never crashes
+# in environments without GCP credentials.
+try:
+    import google.cloud.logging as _gcp_logging  # noqa: PLC0411
+    _GCP_LOGGING_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _gcp_logging = None  # type: ignore[assignment]
+    _GCP_LOGGING_AVAILABLE = False
+
 
 def _setup_cloud_logging() -> None:
     """Attach Google Cloud Logging handler when GCP credentials are available.
 
     Falls back to stdlib logging silently so local development is unaffected.
     """
-    if not settings.google_cloud_project:
+    if not settings.google_cloud_project or not _GCP_LOGGING_AVAILABLE:
         logging.basicConfig(level=settings.log_level)
         return
     try:
-        import google.cloud.logging as gcp_logging  # noqa: PLC0415
-
-        client = gcp_logging.Client(project=settings.google_cloud_project)
-        client.setup_logging(log_level=getattr(logging, settings.log_level, logging.INFO))
-        logger.info("Google Cloud Logging initialised for project %s.", settings.google_cloud_project)
-    except Exception as exc:  # noqa: BLE001
+        client = _gcp_logging.Client(project=settings.google_cloud_project)
+        client.setup_logging(
+            log_level=getattr(logging, settings.log_level, logging.INFO)
+        )
+        logger.info(
+            "Google Cloud Logging initialised for project %s.",
+            settings.google_cloud_project,
+        )
+    except Exception as exc:  # noqa: BLE001 — any GCP auth/network error is non-fatal
         logging.basicConfig(level=settings.log_level)
-        logger.warning("Cloud Logging unavailable (%s); using stdlib logging.", exc.__class__.__name__)
+        logger.warning(
+            "Cloud Logging unavailable (%s); using stdlib logging.",
+            exc.__class__.__name__,
+        )
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Manage application startup and shutdown.
 
     Startup:
@@ -157,7 +173,7 @@ async def health() -> dict[str, str]:
     response_model=FootprintResponse,
     summary="Estimate personal carbon footprint",
     description=(
-        "Accepts a structured lifestyle profile, computes monthly CO₂e estimates "
+        "Accepts a structured lifestyle profile, computes monthly CO\u2082e estimates "
         "across three categories, ranks personalised reduction actions, and returns "
         "Gemini-powered insights (with deterministic fallback). "
         "Responses are cached by request hash for sub-millisecond repeat queries."
@@ -185,9 +201,9 @@ async def estimate_footprint(request: FootprintRequest) -> FootprintResponse:
     actions = generate_actions(request, categories)
 
     # ── 3. Gemini insights (rate-limited) ─────────────────────────────────────
-    semaphore = app_cache.semaphore
-    if semaphore is not None:
-        async with semaphore:
+    active_semaphore = app_cache.semaphore
+    if active_semaphore is not None:
+        async with active_semaphore:
             insights = await generate_personalized_insights(request, categories, actions)
     else:
         insights = await generate_personalized_insights(request, categories, actions)
@@ -203,22 +219,14 @@ async def estimate_footprint(request: FootprintRequest) -> FootprintResponse:
     )
 
     # ── 5. Build, cache, and return ───────────────────────────────────────────
-    result = FootprintResponse(
-        total_monthly_kg=total_monthly,
-        total_yearly_tonnes=round((total_monthly * 12) / 1000, 2),
-        category_results=categories,
-        personalized_actions=actions,
+    result = build_footprint_response(ResponseComponents(
+        total_monthly=total_monthly,
+        categories=categories,
+        actions=actions,
         insights=insights,
         confidence_score=calculate_confidence(request),
-        methodology=(
-            "CO₂e estimates use IPCC/EPA-aligned emission factors. "
-            "Electricity is scaled by renewable share and split across household members. "
-            "Transport factors are applied per km per week. "
-            "Diet, meals out, purchases, and waste are combined into monthly lifestyle impact. "
-            "Gemini AI personalises insight phrasing; it does not alter the numbers."
-        ),
         storage_status=storage_status,
-    )
+    ))
     app_cache.set_cached(cache_key, result)
     return result
 
@@ -226,7 +234,10 @@ async def estimate_footprint(request: FootprintRequest) -> FootprintResponse:
 # ── Validation error handler ──────────────────────────────────────────────────
 
 @app.exception_handler(ValidationError)
-async def pydantic_validation_handler(request: Request, exc: ValidationError) -> JSONResponse:  # noqa: ARG001
+async def pydantic_validation_handler(
+    _request: Request,
+    exc: ValidationError,
+) -> JSONResponse:
     """Return a structured 422 body for Pydantic validation failures."""
     return JSONResponse(
         status_code=422,

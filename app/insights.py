@@ -32,8 +32,11 @@ if settings.gemini_api_key:
     try:
         _gemini_client = genai.Client(api_key=settings.gemini_api_key)
         logger.info("Gemini client initialised (model=%s).", settings.gemini_model)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Gemini client init failed (%s); fallback will be used.", exc.__class__.__name__)
+    except Exception as exc:  # noqa: BLE001 — genai init can raise any SDK or auth error
+        logger.warning(
+            "Gemini client init failed (%s); fallback will be used.",
+            exc.__class__.__name__,
+        )
 
 
 SYSTEM_INSTRUCTION = """\

@@ -1,11 +1,9 @@
 """Unit tests for the carbon calculation and action generation engine."""
 
-import pytest
+from __future__ import annotations
 
 from app.carbon import (
-    ELECTRICITY_KG_PER_KWH,
     NATURAL_GAS_KG_PER_THERM,
-    WEEKS_PER_MONTH,
     calculate_categories,
     calculate_confidence,
     calculate_home_kg,

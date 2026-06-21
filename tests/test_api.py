@@ -12,7 +12,6 @@ Coverage:
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
@@ -243,3 +242,54 @@ def test_cache_does_not_bleed_between_users(client: TestClient) -> None:
     assert r_b.status_code == 200
     # Insights are name-personalised — must differ between users
     assert r_a.json()["insights"] != r_b.json()["insights"]
+
+
+# ── Lifespan ──────────────────────────────────────────────────────────────────
+
+def test_lifespan_preseeds_cache() -> None:
+    """Using TestClient as a context manager triggers lifespan; cache_entries > 0."""
+    from app.main import app as fastapi_app  # noqa: PLC0415
+
+    with TestClient(fastapi_app) as c:
+        resp = c.get("/health")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert int(data["cache_entries"]) >= 3, (
+            "Lifespan preseed must have populated at least 3 demo entries"
+        )
+
+
+# ── Validation error handler ──────────────────────────────────────────────────
+
+def test_pydantic_validation_handler_returns_detail_list(client: TestClient) -> None:
+    """Pydantic ValidationError handler must return a 422 with a 'detail' list."""
+    bad_payload = SAMPLE_PAYLOAD | {
+        "home": SAMPLE_PAYLOAD["home"] | {"electricity_kwh": -1}
+    }
+    response = client.post("/api/footprint", json=bad_payload)
+    assert response.status_code == 422
+    body = response.json()
+    assert "detail" in body
+    assert isinstance(body["detail"], list)
+
+
+# ── Cloud Logging setup ───────────────────────────────────────────────────────
+
+def test_cloud_logging_setup_without_project_does_not_raise() -> None:
+    """_setup_cloud_logging must not raise when no GCP project is configured."""
+    from app.main import _setup_cloud_logging  # noqa: PLC0415
+
+    # With no google_cloud_project set (default empty string), it falls back to
+    # stdlib logging — this must never raise an exception.
+    _setup_cloud_logging()  # no assertion needed — just must not raise
+
+
+# ── response_builder ──────────────────────────────────────────────────────────
+
+def test_response_builder_methodology_is_consistent(client: TestClient) -> None:
+    """Every API response must contain the canonical methodology string."""
+    response = client.post("/api/footprint", json=SAMPLE_PAYLOAD)
+    assert response.status_code == 200
+    methodology = response.json()["methodology"]
+    assert "IPCC" in methodology
+    assert "Gemini AI" in methodology

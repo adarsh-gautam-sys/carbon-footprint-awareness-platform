@@ -27,8 +27,13 @@ __all__ = [
 
 
 class TransportMode(str, Enum):
-    """Enumeration of supported transport modes with associated emission factors."""
+    """Enumeration of supported transport modes with associated emission factors.
 
+    Member names intentionally use snake_case to match the JSON API contract
+    consumed by the JavaScript frontend — the string values are the wire format.
+    """
+
+    # pylint: disable=invalid-name  # snake_case is required by the API contract
     car_petrol   = "car_petrol"
     car_diesel   = "car_diesel"
     car_ev       = "car_ev"
@@ -39,8 +44,13 @@ class TransportMode(str, Enum):
 
 
 class DietType(str, Enum):
-    """Enumeration of dietary patterns mapped to monthly CO₂e estimates."""
+    """Enumeration of dietary patterns mapped to monthly CO\u2082e estimates.
 
+    Member names intentionally use snake_case to match the JSON API contract
+    consumed by the JavaScript frontend — the string values are the wire format.
+    """
+
+    # pylint: disable=invalid-name  # snake_case is required by the API contract
     meat_heavy  = "meat_heavy"
     mixed       = "mixed"
     vegetarian  = "vegetarian"
@@ -52,10 +62,18 @@ class HomeEnergy(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    electricity_kwh:    float = Field(ge=0, le=5000,  description="Monthly household electricity use in kWh.")
-    natural_gas_therms: float = Field(0,    ge=0, le=1000, description="Monthly natural gas usage in therms.")
-    renewable_percent:  float = Field(0,    ge=0, le=100,  description="Renewable share of electricity (0–100%).")
-    household_size:     int   = Field(1,    ge=1, le=12,   description="Number of people sharing this home.")
+    electricity_kwh: float = Field(
+        ge=0, le=5000, description="Monthly household electricity use in kWh."
+    )
+    natural_gas_therms: float = Field(
+        0, ge=0, le=1000, description="Monthly natural gas usage in therms."
+    )
+    renewable_percent: float = Field(
+        0, ge=0, le=100, description="Renewable share of electricity (0\u2013100%)."
+    )
+    household_size: int = Field(
+        1, ge=1, le=12, description="Number of people sharing this home."
+    )
 
 
 class TransportActivity(BaseModel):
@@ -63,8 +81,10 @@ class TransportActivity(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    mode:        TransportMode
-    km_per_week: float = Field(ge=0, le=20000, description="Average km travelled per week by this mode.")
+    mode: TransportMode
+    km_per_week: float = Field(
+        ge=0, le=20000, description="Average km travelled per week by this mode."
+    )
 
 
 class Lifestyle(BaseModel):
@@ -72,10 +92,16 @@ class Lifestyle(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    diet:                DietType
-    meals_out_per_week:  int = Field(0, ge=0, le=35,  description="Restaurant or takeaway meals per week.")
-    new_items_per_month: int = Field(0, ge=0, le=200, description="New clothing, gadgets, and other purchases per month.")
-    waste_bags_per_week: int = Field(0, ge=0, le=50,  description="General waste bags produced per week.")
+    diet: DietType
+    meals_out_per_week: int = Field(
+        0, ge=0, le=35, description="Restaurant or takeaway meals per week."
+    )
+    new_items_per_month: int = Field(
+        0, ge=0, le=200, description="New clothing, gadgets, and other purchases per month."
+    )
+    waste_bags_per_week: int = Field(
+        0, ge=0, le=50, description="General waste bags produced per week."
+    )
 
 
 class UserProfile(BaseModel):
@@ -85,7 +111,9 @@ class UserProfile(BaseModel):
 
     name:    str = Field("Friend", min_length=1, max_length=80)
     country: str = Field("India",  min_length=2, max_length=80)
-    goal:    Literal["save_money", "reduce_emissions", "build_habits", "learn"] = "reduce_emissions"
+    goal:    Literal["save_money", "reduce_emissions", "build_habits", "learn"] = (
+        "reduce_emissions"
+    )
 
     @field_validator("name", "country")
     @classmethod
@@ -108,7 +136,7 @@ class FootprintRequest(BaseModel):
 # ── Response models ───────────────────────────────────────────────────────────
 
 class CategoryResult(BaseModel):
-    """Computed CO₂e for a single emission category."""
+    """Computed CO\u2082e for a single emission category."""
 
     category:    str
     monthly_kg:  float

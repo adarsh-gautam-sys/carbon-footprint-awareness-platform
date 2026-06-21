@@ -21,21 +21,32 @@ from typing import TYPE_CHECKING
 
 from cachetools import TTLCache
 
+from app.carbon import (
+    calculate_categories,
+    calculate_confidence,
+    generate_actions,
+)
 from app.config import settings
+from app.insights import _fallback_insights
+from app.models import FootprintRequest, FootprintResponse
+from app.response_builder import ResponseComponents, build_footprint_response
 
 if TYPE_CHECKING:
-    from app.models import FootprintRequest, FootprintResponse
+    pass  # TYPE_CHECKING block kept for forward-reference compatibility
 
 logger = logging.getLogger(__name__)
 
 # ── Shared state (initialised in lifespan) ────────────────────────────────────
 
-_cache: TTLCache[str, "FootprintResponse"] = TTLCache(
+_cache: TTLCache[str, FootprintResponse] = TTLCache(
     maxsize=settings.cache_max_size,
     ttl=settings.cache_ttl_seconds,
 )
 
 # Semaphore is created inside the running event loop via ``init_semaphore``.
+# The name uses snake_case (not UPPER_CASE) because it is a mutable module-
+# level variable, not a constant — pylint's invalid-name convention does not
+# apply to mutable singletons.
 semaphore: asyncio.Semaphore | None = None
 
 
@@ -45,7 +56,7 @@ def init_semaphore() -> None:
     Must be called from within an async context (e.g., the ``lifespan``
     startup block) so the semaphore is bound to the correct loop.
     """
-    global semaphore
+    global semaphore  # noqa: PLW0603
     semaphore = asyncio.Semaphore(settings.max_concurrent_llm_calls)
     logger.info(
         "LLM semaphore initialised (max_concurrent=%d).",
@@ -55,7 +66,7 @@ def init_semaphore() -> None:
 
 # ── Cache helpers ─────────────────────────────────────────────────────────────
 
-def make_cache_key(request: "FootprintRequest") -> str:
+def make_cache_key(request: FootprintRequest) -> str:
     """Return a stable SHA-256 hex digest for *request*.
 
     ``model_dump()`` is deterministic for frozen models; ``sort_keys=True``
@@ -65,7 +76,7 @@ def make_cache_key(request: "FootprintRequest") -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def get_cached(key: str) -> "FootprintResponse | None":
+def get_cached(key: str) -> FootprintResponse | None:
     """Return a cached response or *None* on a cache miss."""
     result = _cache.get(key)
     if result is not None:
@@ -73,7 +84,7 @@ def get_cached(key: str) -> "FootprintResponse | None":
     return result
 
 
-def set_cached(key: str, value: "FootprintResponse") -> None:
+def set_cached(key: str, value: FootprintResponse) -> None:
     """Store *value* in the cache under *key*."""
     _cache[key] = value
     logger.debug("Cache SET for key %s…", key[:8])
@@ -86,98 +97,96 @@ def cache_size() -> int:
 
 # ── Startup pre-seeding ───────────────────────────────────────────────────────
 
+_DEMO_PAYLOADS: list[dict] = [
+    # Typical Indian urban profile
+    {
+        "profile": {"name": "Demo User", "country": "India", "goal": "reduce_emissions"},
+        "home": {
+            "electricity_kwh": 180,
+            "natural_gas_therms": 0,
+            "renewable_percent": 15,
+            "household_size": 3,
+        },
+        "transport": [{"mode": "train", "km_per_week": 100}],
+        "lifestyle": {
+            "diet": "vegetarian",
+            "meals_out_per_week": 2,
+            "new_items_per_month": 1,
+            "waste_bags_per_week": 1,
+        },
+    },
+    # High-impact mixed profile
+    {
+        "profile": {"name": "Demo User", "country": "India", "goal": "save_money"},
+        "home": {
+            "electricity_kwh": 300,
+            "natural_gas_therms": 5,
+            "renewable_percent": 10,
+            "household_size": 4,
+        },
+        "transport": [{"mode": "car_petrol", "km_per_week": 150}],
+        "lifestyle": {
+            "diet": "mixed",
+            "meals_out_per_week": 4,
+            "new_items_per_month": 3,
+            "waste_bags_per_week": 3,
+        },
+    },
+    # Low-impact eco profile
+    {
+        "profile": {"name": "Demo User", "country": "India", "goal": "build_habits"},
+        "home": {
+            "electricity_kwh": 60,
+            "natural_gas_therms": 0,
+            "renewable_percent": 100,
+            "household_size": 2,
+        },
+        "transport": [{"mode": "walk_cycle", "km_per_week": 20}],
+        "lifestyle": {
+            "diet": "vegan",
+            "meals_out_per_week": 0,
+            "new_items_per_month": 0,
+            "waste_bags_per_week": 0,
+        },
+    },
+]
+
+
+def _seed_one(payload: dict) -> None:
+    """Build and cache a single pre-seeded demo response.
+
+    Extracts the ``FootprintResponse`` construction to a helper to keep
+    ``preseed_cache`` under the local-variable limit.
+    """
+    req = FootprintRequest.model_validate(payload)
+    categories = calculate_categories(req)
+    total_monthly = round(sum(item.monthly_kg for item in categories), 1)
+    actions = generate_actions(req, categories)
+    insights = _fallback_insights(req, categories, actions)
+    response = build_footprint_response(ResponseComponents(
+        total_monthly=total_monthly,
+        categories=categories,
+        actions=actions,
+        insights=insights,
+        confidence_score=calculate_confidence(req),
+        storage_status="pre_seeded",
+    ))
+    key = make_cache_key(req)
+    set_cached(key, response)
+
+
 def preseed_cache() -> None:
     """Pre-populate the cache with expected demo payloads.
 
     Called once during application startup so the first demo requests
     served to judges return in < 1 ms with zero API cost.
     """
-    from app.carbon import calculate_categories, calculate_confidence, generate_actions
-    from app.insights import _fallback_insights
-    from app.models import FootprintRequest, FootprintResponse
-
-    _demo_payloads: list[dict] = [
-        # Typical Indian urban profile
-        {
-            "profile": {"name": "Demo User", "country": "India", "goal": "reduce_emissions"},
-            "home": {
-                "electricity_kwh": 180,
-                "natural_gas_therms": 0,
-                "renewable_percent": 15,
-                "household_size": 3,
-            },
-            "transport": [{"mode": "train", "km_per_week": 100}],
-            "lifestyle": {
-                "diet": "vegetarian",
-                "meals_out_per_week": 2,
-                "new_items_per_month": 1,
-                "waste_bags_per_week": 1,
-            },
-        },
-        # High-impact mixed profile
-        {
-            "profile": {"name": "Demo User", "country": "India", "goal": "save_money"},
-            "home": {
-                "electricity_kwh": 300,
-                "natural_gas_therms": 5,
-                "renewable_percent": 10,
-                "household_size": 4,
-            },
-            "transport": [{"mode": "car_petrol", "km_per_week": 150}],
-            "lifestyle": {
-                "diet": "mixed",
-                "meals_out_per_week": 4,
-                "new_items_per_month": 3,
-                "waste_bags_per_week": 3,
-            },
-        },
-        # Low-impact eco profile
-        {
-            "profile": {"name": "Demo User", "country": "India", "goal": "build_habits"},
-            "home": {
-                "electricity_kwh": 60,
-                "natural_gas_therms": 0,
-                "renewable_percent": 100,
-                "household_size": 2,
-            },
-            "transport": [{"mode": "walk_cycle", "km_per_week": 20}],
-            "lifestyle": {
-                "diet": "vegan",
-                "meals_out_per_week": 0,
-                "new_items_per_month": 0,
-                "waste_bags_per_week": 0,
-            },
-        },
-    ]
-
     seeded = 0
-    for payload in _demo_payloads:
+    for payload in _DEMO_PAYLOADS:
         try:
-            req = FootprintRequest.model_validate(payload)
-            categories = calculate_categories(req)
-            total_monthly = round(sum(item.monthly_kg for item in categories), 1)
-            actions = generate_actions(req, categories)
-            insights = _fallback_insights(req, categories, actions)
-            response = FootprintResponse(
-                total_monthly_kg=total_monthly,
-                total_yearly_tonnes=round((total_monthly * 12) / 1000, 2),
-                category_results=categories,
-                personalized_actions=actions,
-                insights=insights,
-                confidence_score=calculate_confidence(req),
-                methodology=(
-                    "CO₂e estimates use IPCC/EPA-aligned emission factors. "
-                    "Electricity is scaled by renewable share and split across household members. "
-                    "Transport factors are applied per km per week. "
-                    "Diet, meals out, purchases, and waste are combined into monthly lifestyle impact. "
-                    "Gemini AI personalises insight phrasing; it does not alter the numbers."
-                ),
-                storage_status="pre_seeded",
-            )
-            key = make_cache_key(req)
-            set_cached(key, response)
+            _seed_one(payload)
             seeded += 1
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — preseed must never crash startup
             logger.warning("Cache pre-seed failed for a payload: %s", exc)
 
     logger.info("Cache pre-seeded with %d demo payloads.", seeded)

@@ -37,7 +37,8 @@ TRANSPORT_FACTORS_KG_PER_KM: dict[TransportMode, float] = {
 }
 
 # Grid electricity carbon intensity (kg CO2e per kWh)
-# Sources: India CEA 2022-23 (0.71), US EPA eGRID 2022 (0.37), UK DESNZ 2023 (0.18), China MEE (0.58)
+# Sources: India CEA 2022-23 (0.71), US EPA eGRID 2022 (0.37),
+#          UK DESNZ 2023 (0.18), China MEE (0.58)
 ELECTRICITY_BY_COUNTRY: dict[str, float] = {
     "india": 0.71,
     "united states": 0.37,
